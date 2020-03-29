@@ -26,7 +26,10 @@ let statusThrottle = throttle((message: string) => {
 }, THROTTLE_DELAY);
 
 // Exported only for test
-export function _report(event: ReporterEvent, options: PluginOptions): void {
+export async function _report(
+  event: ReporterEvent,
+  options: PluginOptions,
+): Promise<void> {
   let logLevelFilter = logLevels[options.logLevel || 'info'];
 
   switch (event.type) {
@@ -89,7 +92,7 @@ export function _report(event: ReporterEvent, options: PluginOptions): void {
 
       persistSpinner('buildProgress', 'error', chalk.red.bold('Build failed.'));
 
-      writeDiagnostic(event.diagnostics, 'red', true);
+      await writeDiagnostic(options, event.diagnostics, 'red', true);
       break;
     case 'log': {
       if (logLevelFilter < logLevels[event.level]) {
@@ -105,13 +108,13 @@ export function _report(event: ReporterEvent, options: PluginOptions): void {
           break;
         case 'verbose':
         case 'info':
-          writeDiagnostic(event.diagnostics, 'blue');
+          await writeDiagnostic(options, event.diagnostics, 'blue');
           break;
         case 'warn':
-          writeDiagnostic(event.diagnostics, 'yellow', true);
+          await writeDiagnostic(options, event.diagnostics, 'yellow', true);
           break;
         case 'error':
-          writeDiagnostic(event.diagnostics, 'red', true);
+          await writeDiagnostic(options, event.diagnostics, 'red', true);
           break;
         default:
           throw new Error('Unknown log level ' + event.level);
@@ -120,13 +123,17 @@ export function _report(event: ReporterEvent, options: PluginOptions): void {
   }
 }
 
-function writeDiagnostic(
+async function writeDiagnostic(
+  options: PluginOptions,
   diagnostics: Array<Diagnostic>,
   color: string,
   isError: boolean = false,
 ) {
   for (let diagnostic of diagnostics) {
-    let {message, stack, codeframe, hints} = prettyDiagnostic(diagnostic);
+    let {message, stack, codeframe, hints} = await prettyDiagnostic(
+      diagnostic,
+      options.inputFS,
+    );
     message = chalk[color](message);
 
     if (message) {
@@ -149,7 +156,7 @@ function writeDiagnostic(
 }
 
 export default new Reporter({
-  report({event, options}) {
-    _report(event, options);
+  async report({event, options}) {
+    await _report(event, options);
   },
 });
