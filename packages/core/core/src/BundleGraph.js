@@ -674,7 +674,12 @@ export default class BundleGraph {
 
     let identifier = asset.symbols.get(symbol);
     if (symbol === '*') {
-      return {asset, exportSymbol: '*', symbol: identifier};
+      return {
+        asset,
+        exportSymbol: '*',
+        symbol: identifier,
+        loc: asset.symbolsLocs.get(symbol),
+      };
     }
 
     let deps = this.getDependencies(asset).reverse();
@@ -700,11 +705,22 @@ export default class BundleGraph {
           asset: resolvedAsset,
           symbol: resolvedSymbol,
           exportSymbol,
+          loc,
         } = this.resolveSymbol(resolved, depSymbol, boundary);
+
+        if (!loc) {
+          // the recursive call didn't actually do anything
+          loc = asset.symbolsLocs.get(symbol);
+        }
 
         // If it didn't resolve to anything (likely CommonJS), pass through where we got to
         if (resolvedSymbol == null) {
-          return {asset: resolvedAsset, symbol: resolvedSymbol, exportSymbol};
+          return {
+            asset: resolvedAsset,
+            symbol: resolvedSymbol,
+            exportSymbol,
+            loc,
+          };
         }
 
         // Otherwise, keep the original symbol name along with the resolved symbol
@@ -712,6 +728,7 @@ export default class BundleGraph {
           asset: resolvedAsset,
           symbol: resolvedSymbol,
           exportSymbol: symbol,
+          loc,
         };
       }
 
@@ -731,12 +748,18 @@ export default class BundleGraph {
             asset: result.asset,
             symbol: result.symbol,
             exportSymbol: symbol,
+            loc: resolved.symbolsLocs.get(symbol),
           };
         }
       }
     }
 
-    return {asset, exportSymbol: symbol, symbol: identifier};
+    return {
+      asset,
+      exportSymbol: symbol,
+      symbol: identifier,
+      loc: asset.symbolsLocs.get(symbol),
+    };
   }
 
   getExportedSymbols(asset: Asset) {

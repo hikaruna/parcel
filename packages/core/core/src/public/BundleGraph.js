@@ -183,6 +183,7 @@ export default class BundleGraph implements IBundleGraph {
       asset: assetFromValue(res.asset, this.#options),
       exportSymbol: res.exportSymbol,
       symbol: res.symbol,
+      loc: res.loc,
     };
   }
 
@@ -192,6 +193,7 @@ export default class BundleGraph implements IBundleGraph {
       asset: assetFromValue(e.asset, this.#options),
       exportSymbol: e.exportSymbol,
       symbol: e.symbol,
+      loc: e.loc,
     }));
   }
 
