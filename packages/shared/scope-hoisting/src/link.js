@@ -132,7 +132,7 @@ export function link({
       return {
         asset: asset,
         symbol: exportSymbol,
-        identifier: undefined,
+        identifier: null,
       };
     }
 
@@ -158,10 +158,7 @@ export function link({
       bundle,
     );
 
-    let node;
-    if (identifier) {
-      node = findSymbol(path, identifier);
-    }
+    let node = identifier ? findSymbol(path, identifier) : identifier;
 
     // If the module is not in this bundle, create a `require` call for it.
     if (!node && (!mod.meta.id || !assets.has(assertString(mod.meta.id)))) {
@@ -170,13 +167,19 @@ export function link({
     }
 
     // If this is an ES6 module, throw an error if we cannot resolve the module
-    if (!node && !mod.meta.isCommonJS && mod.meta.isES6Module) {
+    if (
+      !node &&
+      node !== null &&
+      !mod.meta.isCommonJS &&
+      mod.meta.isES6Module &&
+      !mod.meta.evalWrapped
+    ) {
       let relativePath = relative(options.inputFS.cwd(), mod.filePath);
       throw new Error(`${relativePath} does not export '${symbol}'`);
     }
 
     // If it is CommonJS, look for an exports object.
-    if (!node && mod.meta.isCommonJS) {
+    if ((node === undefined && mod.meta.isCommonJS) || node === null) {
       node = findSymbol(path, assertString(mod.meta.exportsIdentifier));
       if (!node) {
         return null;

@@ -578,7 +578,7 @@ export type CreateBundleOpts =
 export type SymbolResolution = {|
   +asset: Asset,
   +exportSymbol: Symbol | string,
-  +symbol: void | Symbol,
+  +symbol: void | null | Symbol,
 |};
 
 export interface Bundle {

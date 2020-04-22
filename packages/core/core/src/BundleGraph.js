@@ -668,7 +668,9 @@ export default class BundleGraph {
   }
 
   // Resolve the export `symbol` of `asset` to the source,
-  // stopping at the first asset after leaving `bundle` (symbol is nullish in that case)
+  // stopping at the first asset after leaving `bundle`
+  // bailout (== caller should do `asset.exports[exportsSymbol]`): `symbol === null`
+  // not found: `symbol === undefined && exportSymbol !== '*'`
   resolveSymbol(asset: Asset, symbol: Symbol, boundary: ?Bundle) {
     let assetOutside = boundary && !this.bundleHasAsset(boundary, asset);
 
@@ -677,6 +679,7 @@ export default class BundleGraph {
       return {asset, exportSymbol: '*', symbol: identifier};
     }
 
+    let bailout = Boolean(asset.meta.evalWrapped);
     let deps = this.getDependencies(asset).reverse();
     for (let dep of deps) {
       // If this is a re-export, find the original module.
@@ -687,12 +690,14 @@ export default class BundleGraph {
       if (depSymbol != null) {
         let resolved = this.getDependencyResolution(dep);
         if (!resolved) {
-          // External module.
+          // External module
+          bailout = true;
           break;
         }
 
         if (assetOutside) {
           // We found the symbol, but `asset` is outside, return `asset` and the original symbol
+          bailout = true;
           break;
         }
 
@@ -703,8 +708,8 @@ export default class BundleGraph {
         } = this.resolveSymbol(resolved, depSymbol, boundary);
 
         // If it didn't resolve to anything (likely CommonJS), pass through where we got to
-        if (resolvedSymbol == null) {
-          return {asset: resolvedAsset, symbol: resolvedSymbol, exportSymbol};
+        if (resolvedSymbol === null) {
+          return {asset: resolvedAsset, symbol: null, exportSymbol};
         }
 
         // Otherwise, keep the original symbol name along with the resolved symbol
@@ -721,9 +726,11 @@ export default class BundleGraph {
         let resolved = this.getDependencyResolution(dep);
         if (!resolved) continue;
         let result = this.resolveSymbol(resolved, symbol, boundary);
+        bailout = Boolean(result.asset.meta.evalWrapped);
         if (result.symbol != undefined) {
           if (assetOutside) {
             // We found the symbol, but `asset` is outside, return `asset` and the original symbol
+            bailout = true;
             break;
           }
 
@@ -736,7 +743,11 @@ export default class BundleGraph {
       }
     }
 
-    return {asset, exportSymbol: symbol, symbol: identifier};
+    return {
+      asset,
+      exportSymbol: symbol,
+      symbol: bailout ? null : identifier,
+    };
   }
 
   getExportedSymbols(asset: Asset) {
